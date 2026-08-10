@@ -1,0 +1,61 @@
+x-dev-base: &dev-base
+  build:
+    context: .
+    dockerfile: .devcontainer/Dockerfile
+    args:
+      UID: ${UID:-1000}
+      GID: ${GID:-1000}
+  
+  volumes:
+    - .:/workspace
+  networks:
+      - golang-dev-network
+  working_dir: /workspace
+
+services:
+
+  dev:
+    <<: *dev-base
+    container_name: dev-container
+    
+    command:
+      - sleep
+      - infinity
+
+  dev-ssh:
+    <<: *dev-base
+    container_name: dev-ssh-container
+    
+    ports:
+      - "2222:22"
+
+    command:
+      - /usr/sbin/sshd
+      - -D
+
+  postgres:
+    image: postgres:18
+    container_name: postgres-container
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    networks:
+      - golang-dev-network
+
+volumes:
+  postgres_data:
+    name: postgres_data_container
+
+networks:
+  golang-dev-network:
+    name: golang-dev-network
+    driver: bridge
