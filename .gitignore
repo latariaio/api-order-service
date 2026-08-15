@@ -1,1 +1,61 @@
 .devcontainer/*.pub
+
+# Binários compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/tmp/
+
+# Binário principal (ajuste o nome conforme seu projeto)
+main
+!main.go
+api_service_order
+
+# Saída de testes
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Dependências (Go usa go.sum, mas cache local pode ser ignorado)
+vendor/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Arquivos de IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Air (live reload) - muito usado em projetos Go
+tmp/
+.air.toml.bak
+
+# Logs
+*.log
+logs/
+
+# Delve (debugger)
+__debug_bin*
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+
+# Migrations geradas localmente (se aplicável)
+# *.sql.bak
+
+# Docker (se não quiser versionar overrides locais)
+docker-compose.override.yml
+
+# Certificados e chaves locais
+*.pem
+*.key

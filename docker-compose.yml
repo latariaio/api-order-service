@@ -5,7 +5,7 @@ x-dev-base: &dev-base
     args:
       UID: ${UID:-1000}
       GID: ${GID:-1000}
-  
+
   volumes:
     - .:/workspace
   networks:
@@ -16,18 +16,19 @@ services:
 
   dev:
     <<: *dev-base
-    container_name: dev-container
-    
+    container_name: api_order_service
+
     command:
       - sleep
       - infinity
 
   dev-ssh:
     <<: *dev-base
-    container_name: dev-ssh-container
-    
+    container_name: api_order_service_ssh
+
     ports:
       - "2222:22"
+      - "8080:8080"
 
     command:
       - /usr/sbin/sshd
@@ -35,7 +36,7 @@ services:
 
   postgres:
     image: postgres:18
-    container_name: postgres-container
+    container_name: db_order_service
 
     environment:
       POSTGRES_USER: postgres
@@ -53,7 +54,7 @@ services:
 
 volumes:
   postgres_data:
-    name: postgres_data_container
+    name: order_service_postgres_data
 
 networks:
   golang-dev-network:

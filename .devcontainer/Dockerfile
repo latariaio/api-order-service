@@ -27,6 +27,7 @@ RUN go install golang.org/x/tools/gopls@latest
 RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN go install github.com/air-verse/air@latest
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 ENV PATH="/go/bin:${PATH}"
 
