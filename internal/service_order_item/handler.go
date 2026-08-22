@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type ServiceOrderItemHandler struct {
@@ -16,7 +17,7 @@ func NewServiceOrderItemHandler(service *ServiceOrderItemService) *ServiceOrderI
 	}
 }
 
-type ServiceOrderItemInput struct {
+type ServiceOrderItemRequest struct {
 	ServiceOrderID string
 	ServiceID      string
 	Quantity       int
@@ -25,16 +26,90 @@ type ServiceOrderItemInput struct {
 }
 
 func (h *ServiceOrderItemHandler) CreateServiceOrderItem(c *gin.Context) {
-	var input ServiceOrderItemInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var request ServiceOrderItemRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.service.Create(&input); err != nil {
+	serviceOrderID, err := uuid.Parse(request.ServiceOrderID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service_order_id: " + err.Error()})
+		return
+	}
+
+	serviceID, err := uuid.Parse(request.ServiceID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service_id: " + err.Error()})
+		return
+	}
+
+	item := &ServiceOrderItem{
+		ServiceOrderID: serviceOrderID,
+		ServiceID:      serviceID,
+		Quantity:       request.Quantity,
+		UnitPrice:      request.UnitPrice,
+		TotalPrice:     request.TotalPrice,
+	}
+
+	if err := h.service.Create(item); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Service order item created successfully"})
+	c.JSON(http.StatusCreated, item)
+}
+
+func (h *ServiceOrderItemHandler) GetServiceOrderItems(c *gin.Context) {
+	items, err := h.service.repo.FindAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, items)
+}
+
+func (h *ServiceOrderItemHandler) GetServiceOrderItem(c *gin.Context) {
+	item, err := h.service.repo.FindById(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ServiceOrderItemHandler) UpdateServiceOrderItem(c *gin.Context) {
+	var request ServiceOrderItemRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	item, err := h.service.repo.FindById(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	item.Quantity = request.Quantity
+	item.UnitPrice = request.UnitPrice
+	item.TotalPrice = request.TotalPrice
+
+	if err := h.service.repo.Update(item); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ServiceOrderItemHandler) DeleteServiceOrderItem(c *gin.Context) {
+	if err := h.service.repo.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "item deleted"})
 }

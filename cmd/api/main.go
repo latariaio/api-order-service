@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/latariaio/api-order-service/internal/customer"
 	"github.com/latariaio/api-order-service/internal/database"
@@ -10,8 +12,11 @@ import (
 )
 
 func main() {
+	if err := database.RunMigrations(); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
 	db := database.Connect()
-	db.AutoMigrate(&customer.Customer{}, &service.Service{})
 
 	router := gin.Default()
 

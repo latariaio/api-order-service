@@ -2,6 +2,7 @@ package customer
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,36 +17,21 @@ func NewCustomerHandler(service *CustomerService) *CustomerHandler {
 	}
 }
 
-type CreateCustomerRequest struct {
-	Name     string `json:"name"`
-	Document string `json:"document"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
-	Address  string `json:"address"`
-}
-
 func (h *CustomerHandler) CreateCustomer(ctx *gin.Context) {
-	var request CreateCustomerRequest
-	if err := ctx.BindJSON(&request); err != nil {
+	var request CustomerResponse
+	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	customer := Customer{
-		Name:     request.Name,
-		Document: request.Document,
-		Phone:    request.Phone,
-		Email:    request.Email,
-		Address:  request.Address,
-	}
-
-	log.Default().Println("creating customer", customer)
+	customer := ToModel(request)
 
 	if err := h.service.Create(&customer); err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(200, customer)
+
+	ctx.JSON(http.StatusOK, ToCustomerResponse(customer))
 }
 
 func (h *CustomerHandler) GetCustomer(ctx *gin.Context) {
@@ -65,28 +51,23 @@ func (h *CustomerHandler) GetCustomers(ctx *gin.Context) {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(200, customers)
+	ctx.JSON(200, ToCustomerResponseList(customers))
 }
 
 func (h *CustomerHandler) UpdateCustomer(ctx *gin.Context) {
 	id := ctx.Param("id")
-	var request CreateCustomerRequest
-	if err := ctx.BindJSON(&request); err != nil {
+	var request CustomerResponse
+	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	customer := Customer{
-		Name:     request.Name,
-		Document: request.Document,
-		Phone:    request.Phone,
-		Email:    request.Email,
-		Address:  request.Address,
-	}
+	customer := ToModel(request)
+
 	if err := h.service.Update(id, &customer); err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(200, customer)
+	ctx.JSON(200, ToCustomerResponse(customer))
 }
 
 func (h *CustomerHandler) DeleteCustomer(ctx *gin.Context) {

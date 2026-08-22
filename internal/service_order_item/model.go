@@ -11,9 +11,9 @@ import (
 
 type ServiceOrderItem struct {
 	ID             uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	ServiceOrderID string
+	ServiceOrderID uuid.UUID
 	ServiceOrder   service_order.ServiceOrder `gorm:"foreignKey:ServiceOrderID"`
-	ServiceID      string
+	ServiceID      uuid.UUID
 	Service        service.Service `gorm:"foreignKey:ServiceID"`
 	Quantity       int
 	UnitPrice      float64
