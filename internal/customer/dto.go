@@ -6,6 +6,48 @@ import (
 	"github.com/google/uuid"
 )
 
+// --- Entrada: Create ---
+
+type AddressRequest struct {
+	Street       string `json:"street" binding:"required"`
+	Number       string `json:"number" binding:"required"`
+	Complement   string `json:"complement"`
+	Neighborhood string `json:"neighborhood" binding:"required"`
+	City         string `json:"city" binding:"required"`
+	State        string `json:"state" binding:"required"`
+	ZipCode      string `json:"zipCode" binding:"required"`
+}
+
+type CreateCustomerRequest struct {
+	Name         string         `json:"name" binding:"required"`
+	Document     string         `json:"document" binding:"required"`
+	DocumentType CustomerType   `json:"documentType" binding:"required"`
+	Phone        string         `json:"phone" binding:"required"`
+	Email        string         `json:"email" binding:"required,email"`
+	Address      AddressRequest `json:"address" binding:"required"`
+}
+
+// --- Entrada: Update (parcial) ---
+
+type UpdateAddressRequest struct {
+	Street       *string `json:"street"`
+	Number       *string `json:"number"`
+	Complement   *string `json:"complement"`
+	Neighborhood *string `json:"neighborhood"`
+	City         *string `json:"city"`
+	State        *string `json:"state"`
+	ZipCode      *string `json:"zipCode"`
+}
+
+type UpdateCustomerRequest struct {
+	Name    *string               `json:"name"`
+	Phone   *string               `json:"phone"`
+	Email   *string               `json:"email"`
+	Address *UpdateAddressRequest `json:"address"`
+}
+
+// --- Saída: Response ---
+
 type AddressResponse struct {
 	Street       string `json:"street"`
 	Number       string `json:"number"`
@@ -25,51 +67,4 @@ type CustomerResponse struct {
 	Email        string          `json:"email"`
 	Address      AddressResponse `json:"address"`
 	CreatedAt    time.Time       `json:"createdAt"`
-}
-
-func ToCustomerResponse(c Customer) CustomerResponse {
-	return CustomerResponse{
-		ID:           c.ID,
-		Name:         c.Name,
-		Document:     c.Document,
-		DocumentType: c.DocumentType,
-		Phone:        c.Phone,
-		Email:        c.Email,
-		Address: AddressResponse{
-			Street:       c.Address.Street,
-			Number:       c.Address.Number,
-			Complement:   c.Address.Complement,
-			Neighborhood: c.Address.Neighborhood,
-			City:         c.Address.City,
-			State:        c.Address.State,
-			ZipCode:      c.Address.ZipCode,
-		},
-		CreatedAt: c.CreatedAt,
-	}
-}
-
-func ToCustomerResponseList(customers []Customer) []CustomerResponse {
-	responses := make([]CustomerResponse, len(customers))
-	for i, c := range customers {
-		responses[i] = ToCustomerResponse(c)
-	}
-	return responses
-}
-
-func ToModel(r CustomerResponse) Customer {
-	return Customer{Name: r.Name,
-		Document:     r.Document,
-		DocumentType: r.DocumentType,
-		Phone:        r.Phone,
-		Email:        r.Email,
-		Address: Address{
-			Street:       r.Address.Street,
-			Number:       r.Address.Number,
-			Complement:   r.Address.Complement,
-			Neighborhood: r.Address.Neighborhood,
-			City:         r.Address.City,
-			State:        r.Address.State,
-			ZipCode:      r.Address.ZipCode,
-		},
-	}
 }
