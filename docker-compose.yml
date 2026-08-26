@@ -5,11 +5,12 @@ x-dev-base: &dev-base
     args:
       UID: ${UID:-1000}
       GID: ${GID:-1000}
-
+  ports:
+    - "8080:8080"
   volumes:
     - .:/workspace
   networks:
-      - golang-dev-network
+    - golang-dev-network
   working_dir: /workspace
 
 services:
@@ -28,8 +29,6 @@ services:
 
     ports:
       - "2222:22"
-      - "8080:8080"
-
     command:
       - /usr/sbin/sshd
       - -D
