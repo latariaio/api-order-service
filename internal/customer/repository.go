@@ -32,6 +32,14 @@ func (r *CustomerRepository) FindById(id string) (*Customer, error) {
 	return &customer, nil
 }
 
+func (r *CustomerRepository) FindByEmail(email string) (*Customer, error) {
+	var customer Customer
+	if err := r.db.Where("email = ?", email).First(&customer).Error; err != nil {
+		return nil, err
+	}
+	return &customer, nil
+}
+
 func (r *CustomerRepository) FindAll() ([]Customer, error) {
 	var customers []Customer
 	if err := r.db.Find(&customers).Error; err != nil {
@@ -44,6 +52,6 @@ func (r *CustomerRepository) Update(customer *Customer) error {
 	return r.db.Save(&customer).Error
 }
 
-func (r *CustomerRepository) Delete(id string) error {
-	return r.db.Where("id = ?", id).Delete(&Customer{}).Error
+func (r *CustomerRepository) Delete(customer *Customer) error {
+	return r.db.Delete(customer).Error
 }
