@@ -1,84 +1,122 @@
 package service
 
-import "github.com/gin-gonic/gin"
+import (
+	"errors"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/latariaio/api-order-service/internal/httputil"
+)
 
 type HandlerService struct {
 	service *Services
 }
 
 func NewHandlerService(service *Services) *HandlerService {
-	return &HandlerService{
-		service: service,
-	}
-}
-
-type CreateServiceRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price" binding:"required"`
+	return &HandlerService{service: service}
 }
 
 func (h *HandlerService) Create(ctx *gin.Context) {
 	var request CreateServiceRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		if fieldErrors := httputil.FormatValidationError(err); fieldErrors != nil {
+			ctx.JSON(400, gin.H{"errors": fieldErrors})
+			return
+		}
+		ctx.JSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
-	service := Service{
-		Name:        request.Name,
-		Description: request.Description,
-		Price:       request.Price,
-	}
-	if err := h.service.Create(&service); err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+
+	svc := request.ToModel()
+
+	if err := h.service.Create(&svc); err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidPrice):
+			ctx.JSON(400, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceNameAlreadyExists):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error creating service: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
-	ctx.JSON(200, service)
+
+	ctx.JSON(http.StatusCreated, gin.H{"data": ToServiceResponse(svc)})
 }
 
 func (h *HandlerService) GetServices(ctx *gin.Context) {
 	services, err := h.service.GetAll()
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("unexpected error listing services: %v", err)
+		ctx.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
-	ctx.JSON(200, gin.H{"data": services})
+	ctx.JSON(200, gin.H{"data": ToServiceResponseList(services)})
 }
 
 func (h *HandlerService) GetServiceById(ctx *gin.Context) {
 	id := ctx.Param("id")
-	service, err := h.service.GetByID(id)
+	svc, err := h.service.GetByID(id)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, ErrServiceNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error getting service: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
-	ctx.JSON(200, service)
+	ctx.JSON(200, gin.H{"data": ToServiceResponse(*svc)})
 }
 
 func (h *HandlerService) UpdateService(ctx *gin.Context) {
 	id := ctx.Param("id")
-	var request CreateServiceRequest
+
+	var request UpdateServiceRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		if fieldErrors := httputil.FormatValidationError(err); fieldErrors != nil {
+			ctx.JSON(400, gin.H{"errors": fieldErrors})
+			return
+		}
+		ctx.JSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
-	serviceUpdate := Service{
-		Name:        request.Name,
-		Description: request.Description,
-		Price:       request.Price,
-	}
-	if err := h.service.Update(id, &serviceUpdate); err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+
+	svc, err := h.service.Update(id, request)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrServiceNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrInvalidPrice):
+			ctx.JSON(400, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceNameAlreadyExists):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error updating service: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
-	ctx.JSON(200, serviceUpdate)
+
+	ctx.JSON(200, gin.H{"data": ToServiceResponse(*svc)})
 }
 
 func (h *HandlerService) DeleteService(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if err := h.service.Delete(id); err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, ErrServiceNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceInUse):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error deleting service: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "service deleted"})
+	ctx.Status(204)
 }
