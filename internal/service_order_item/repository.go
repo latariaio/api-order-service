@@ -1,6 +1,9 @@
 package service_order_item
 
-import "gorm.io/gorm"
+import (
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
+)
 
 type ServiceOrderItemRepository struct {
 	db *gorm.DB
@@ -14,25 +17,40 @@ func (r *ServiceOrderItemRepository) Insert(item *ServiceOrderItem) error {
 	return r.db.Create(item).Error
 }
 
-func (r *ServiceOrderItemRepository) FindAll() ([]ServiceOrderItem, error) {
-	var items []ServiceOrderItem
-	return items, r.db.Find(&items).Error
-}
-
-func (r *ServiceOrderItemRepository) FindById(id string) (*ServiceOrderItem, error) {
+func (r *ServiceOrderItemRepository) FindByID(id string) (*ServiceOrderItem, error) {
 	var item ServiceOrderItem
-	return &item, r.db.First(&item, "id = ?", id).Error
+	if err := r.db.Where("id = ?", id).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
 }
 
-func (r *ServiceOrderItemRepository) FindByServiceOrderId(serviceOrderId string) ([]ServiceOrderItem, error) {
+func (r *ServiceOrderItemRepository) FindByServiceOrderID(orderID string) ([]ServiceOrderItem, error) {
 	var items []ServiceOrderItem
-	return items, r.db.Find(&items, "service_order_id = ?", serviceOrderId).Error
+	if err := r.db.Where("service_order_id = ?", orderID).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func (r *ServiceOrderItemRepository) Update(item *ServiceOrderItem) error {
-	return r.db.Where("id = ?", item.ID).Save(item).Error
+	return r.db.Save(item).Error
 }
 
 func (r *ServiceOrderItemRepository) Delete(id string) error {
 	return r.db.Where("id = ?", id).Delete(&ServiceOrderItem{}).Error
+}
+
+// SumTotalByServiceOrderID soma o total_price de todos os itens ativos de uma OS
+func (r *ServiceOrderItemRepository) SumTotalByServiceOrderID(orderID string) (decimal.Decimal, error) {
+	items, err := r.FindByServiceOrderID(orderID)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	total := decimal.Zero
+	for _, item := range items {
+		total = total.Add(item.TotalPrice)
+	}
+	return total, nil
 }
