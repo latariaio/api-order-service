@@ -1,10 +1,12 @@
 package service_order_item
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/latariaio/api-order-service/internal/httputil"
 )
 
 type ServiceOrderItemHandler struct {
@@ -12,104 +14,103 @@ type ServiceOrderItemHandler struct {
 }
 
 func NewServiceOrderItemHandler(service *ServiceOrderItemService) *ServiceOrderItemHandler {
-	return &ServiceOrderItemHandler{
-		service: service,
-	}
+	return &ServiceOrderItemHandler{service: service}
 }
 
-type ServiceOrderItemRequest struct {
-	ServiceOrderID string
-	ServiceID      string
-	Quantity       int
-	UnitPrice      float64
-	TotalPrice     float64
-}
+func (h *ServiceOrderItemHandler) AddItem(ctx *gin.Context) {
+	orderID := ctx.Param("id")
 
-func (h *ServiceOrderItemHandler) CreateServiceOrderItem(c *gin.Context) {
-	var request ServiceOrderItemRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var request AddServiceOrderItemRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		if fieldErrors := httputil.FormatValidationError(err); fieldErrors != nil {
+			ctx.JSON(400, gin.H{"errors": fieldErrors})
+			return
+		}
+		ctx.JSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	serviceOrderID, err := uuid.Parse(request.ServiceOrderID)
+	item, err := h.service.AddItem(orderID, request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service_order_id: " + err.Error()})
+		switch {
+		case errors.Is(err, ErrServiceOrderNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceNotFound):
+			ctx.JSON(400, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceOrderClosed):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error adding item: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
-	serviceID, err := uuid.Parse(request.ServiceID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid service_id: " + err.Error()})
-		return
-	}
-
-	item := &ServiceOrderItem{
-		ServiceOrderID: serviceOrderID,
-		ServiceID:      serviceID,
-		Quantity:       request.Quantity,
-		UnitPrice:      request.UnitPrice,
-		TotalPrice:     request.TotalPrice,
-	}
-
-	if err := h.service.Create(item); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, item)
+	ctx.JSON(http.StatusCreated, gin.H{"data": ToServiceOrderItemResponse(*item)})
 }
 
-func (h *ServiceOrderItemHandler) GetServiceOrderItems(c *gin.Context) {
-	items, err := h.service.repo.FindAll()
+func (h *ServiceOrderItemHandler) ListItems(ctx *gin.Context) {
+	orderID := ctx.Param("id")
+	items, err := h.service.ListByOrder(orderID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("unexpected error listing items: %v", err)
+		ctx.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
-
-	c.JSON(http.StatusOK, items)
+	ctx.JSON(200, gin.H{"data": ToServiceOrderItemResponseList(items)})
 }
 
-func (h *ServiceOrderItemHandler) GetServiceOrderItem(c *gin.Context) {
-	item, err := h.service.repo.FindById(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+func (h *ServiceOrderItemHandler) UpdateItem(ctx *gin.Context) {
+	orderID := ctx.Param("id")
+	itemID := ctx.Param("itemId")
+
+	var request UpdateServiceOrderItemRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		if fieldErrors := httputil.FormatValidationError(err); fieldErrors != nil {
+			ctx.JSON(400, gin.H{"errors": fieldErrors})
+			return
+		}
+		ctx.JSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	c.JSON(http.StatusOK, item)
+	item, err := h.service.UpdateItem(orderID, itemID, request)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrServiceOrderNotFound), errors.Is(err, ErrServiceOrderItemNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrItemDoesNotBelongToOrder):
+			ctx.JSON(400, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceOrderClosed):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error updating item: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
+		return
+	}
+
+	ctx.JSON(200, gin.H{"data": ToServiceOrderItemResponse(*item)})
 }
 
-func (h *ServiceOrderItemHandler) UpdateServiceOrderItem(c *gin.Context) {
-	var request ServiceOrderItemRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+func (h *ServiceOrderItemHandler) RemoveItem(ctx *gin.Context) {
+	orderID := ctx.Param("id")
+	itemID := ctx.Param("itemId")
+
+	if err := h.service.RemoveItem(orderID, itemID); err != nil {
+		switch {
+		case errors.Is(err, ErrServiceOrderNotFound), errors.Is(err, ErrServiceOrderItemNotFound):
+			ctx.JSON(404, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrItemDoesNotBelongToOrder):
+			ctx.JSON(400, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrServiceOrderClosed):
+			ctx.JSON(409, gin.H{"error": err.Error()})
+		default:
+			log.Printf("unexpected error removing item: %v", err)
+			ctx.JSON(500, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
-	item, err := h.service.repo.FindById(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	item.Quantity = request.Quantity
-	item.UnitPrice = request.UnitPrice
-	item.TotalPrice = request.TotalPrice
-
-	if err := h.service.repo.Update(item); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, item)
-}
-
-func (h *ServiceOrderItemHandler) DeleteServiceOrderItem(c *gin.Context) {
-	if err := h.service.repo.Delete(c.Param("id")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "item deleted"})
+	ctx.Status(204)
 }
