@@ -2,13 +2,9 @@ package service_order
 
 import (
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func RegisterRoutes(router *gin.Engine, db *gorm.DB) {
-	repo := NewServiceOrderRepository(db)
-	svc := NewServiceOrderService(repo)
-	handler := NewServiceOrderHandler(svc)
+func RegisterRoutes(router *gin.Engine, handler *ServiceOrderHandler) {
 
 	router.POST("/service-orders", handler.Create)
 	router.GET("/service-orders", handler.GetAll)

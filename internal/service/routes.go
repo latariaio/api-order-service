@@ -2,14 +2,9 @@ package service
 
 import (
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func RegisterRoutes(router *gin.Engine, db *gorm.DB) {
-	repo := NewServiceRepository(db)
-	service := NewServices(repo)
-	handler := NewHandlerService(service)
-
+func RegisterRoutes(router *gin.Engine, handler *HandlerService) {
 	router.POST("/services", handler.Create)
 	router.GET("/services", handler.GetServices)
 	router.GET("/services/:id", handler.GetServiceById)
