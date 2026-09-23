@@ -31,14 +31,14 @@ RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate
 
 ENV PATH="/go/bin:${PATH}"
 
-COPY .devcontainer/config/sshd_config /etc/ssh/sshd_config
-COPY .devcontainer/config/entrypoint.sh /entrypoint.sh
+# COPY .devcontainer/config/sshd_config /etc/ssh/sshd_config
+# COPY .devcontainer/config/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+# RUN chmod +x /entrypoint.sh
 
 WORKDIR /workspace
 
 RUN echo 'export PATH="/usr/local/go/bin:/go/bin:${PATH}"' > /etc/profile.d/golang.sh \
     && chmod +x /etc/profile.d/golang.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+# ENTRYPOINT ["/entrypoint.sh"]

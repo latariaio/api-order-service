@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_order_service_prod
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.prod
+    depends_on:
+      - postgres
+    networks:
+      - app-shared-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    container_name: db_order_service_prod
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql
+    networks:
+      - app-shared-network
+    restart: unless-stopped
+
+networks:
+  app-shared-network:
+    external: true
+
+volumes:
+  postgres_data_prod:
+    name: order_service_postgres_data_prod

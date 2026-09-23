@@ -23,15 +23,15 @@ services:
       - sleep
       - infinity
 
-  dev-ssh:
-    <<: *dev-base
-    container_name: api_order_service_ssh
+  # dev-ssh:
+  #   <<: *dev-base
+  #   container_name: api_order_service_ssh
 
-    ports:
-      - "2222:22"
-    command:
-      - /usr/sbin/sshd
-      - -D
+  #   ports:
+  #     - "2222:22"
+  #   command:
+  #     - /usr/sbin/sshd
+  #     - -D
 
   postgres:
     image: postgres:18

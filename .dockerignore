@@ -1,0 +1,5 @@
+.devcontainer
+tmp
+*.md
+.env
+.env.*
